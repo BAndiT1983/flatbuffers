@@ -61,6 +61,17 @@ static std::string GoIdentity(const std::string& name) {
   return MakeCamel(name, false);
 }
 
+static bool IsEnum(const FieldDef &field);
+static std::string EnumName(const FieldDef &field);
+
+static bool IsEnum(const FieldDef &field) {
+  return field.value.type.enum_def;
+}
+
+static std::string EnumName(const FieldDef &field) {
+  return field.value.type.enum_def->name;
+}
+
 
 // Most field accessors need to retrieve and test the field offset first,
 // this is the prefix code for that.
@@ -83,8 +94,9 @@ static void BeginClass(const StructDef &struct_def, std::string *code_ptr) {
 }
 
 // Begin enum code with a class declaration.
-static void BeginEnum(std::string *code_ptr) {
+static void BeginEnum(const EnumDef &enum_def, std::string *code_ptr) {
   std::string &code = *code_ptr;
+  code += "type " + enum_def.name + " " + GenTypeGet(enum_def.underlying_type) + "\n\n";
   code += "const (\n";
 }
 
@@ -450,7 +462,11 @@ static void BuildFieldOfTable(const StructDef &struct_def,
   code += GoIdentity(field.name) + " ";
   if (!IsScalar(field.value.type.base_type) && (!struct_def.fixed)) {
     code += "flatbuffers.UOffsetT";
-  } else {
+  }
+  else if(IsEnum(field)) {
+      code += EnumName(field);
+  }
+  else {
     code += GenTypeBasic(field.value.type);
   }
   code += ") {\n";
@@ -461,7 +477,13 @@ static void BuildFieldOfTable(const StructDef &struct_def,
     code += "flatbuffers.UOffsetT";
     code += "(";
     code += GoIdentity(field.name) + ")";
-  } else {
+  }
+  else if(IsEnum(field))
+  {
+      code += GenTypeBasic(field.value.type) + "(";
+      code += GoIdentity(field.name) + ")";
+  }
+  else {
     code += GoIdentity(field.name);
   }
   code += ", " + field.value.constant;
@@ -654,7 +676,7 @@ static void GenEnum(const EnumDef &enum_def, std::string *code_ptr) {
   if (enum_def.generated) return;
 
   GenComment(enum_def.doc_comment, code_ptr, nullptr);
-  BeginEnum(code_ptr);
+  BeginEnum(enum_def, code_ptr);
   for (auto it = enum_def.vals.vec.begin();
        it != enum_def.vals.vec.end();
        ++it) {
