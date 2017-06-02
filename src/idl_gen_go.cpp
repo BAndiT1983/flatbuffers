@@ -61,10 +61,12 @@ static std::string GoIdentity(const std::string& name) {
   return MakeCamel(name, false);
 }
 
-static bool IsEnum(const FieldDef &field);
-static std::string EnumName(const FieldDef &field);
-
 static bool IsEnum(const FieldDef &field) {
+  if(field.value.type.enum_def == nullptr)
+  {
+    return false;
+  }
+
   return field.value.type.enum_def;
 }
 
@@ -464,7 +466,7 @@ static void BuildFieldOfTable(const StructDef &struct_def,
     code += "flatbuffers.UOffsetT";
   }
   else if(IsEnum(field)) {
-      code += EnumName(field);
+    code += EnumName(field);
   }
   else {
     code += GenTypeBasic(field.value.type);
@@ -478,10 +480,9 @@ static void BuildFieldOfTable(const StructDef &struct_def,
     code += "(";
     code += GoIdentity(field.name) + ")";
   }
-  else if(IsEnum(field))
-  {
-      code += GenTypeBasic(field.value.type) + "(";
-      code += GoIdentity(field.name) + ")";
+  else if(IsEnum(field)) {
+    code += GenTypeBasic(field.value.type) + "(";
+    code += GoIdentity(field.name) + ")";
   }
   else {
     code += GoIdentity(field.name);
